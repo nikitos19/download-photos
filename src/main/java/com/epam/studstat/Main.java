@@ -1,9 +1,6 @@
 package com.epam.studstat;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -14,24 +11,28 @@ import java.util.Properties;
 
 public class Main {
 
-    public static Properties getProperties() throws IOException {
-        File appFile = new File("./application.properties");
+
+    private static Properties getProperties() throws IOException {
+        File jarPath = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+        String propertiesPath = jarPath.getParentFile().getAbsolutePath() + "/application.properties";
+        File appFile = new File(propertiesPath);
         Properties appProp = new Properties();
         if (appFile.exists()) {
             try (FileInputStream fis = new FileInputStream(appFile)) {
                 appProp.load(fis);
             }
+            return appProp;
         }
-        return appProp;
+        throw new FileNotFoundException(appFile.getAbsolutePath() + " not found");
     }
 
-    private static Map<Long, byte[]> getPersonsPhotos(String url, Properties connProp, String driver) throws SQLException, ClassNotFoundException {
+    private static Map<Long, byte[]> getPersonsPhotos(String url, Properties connProp, String driver) throws SQLException, ClassNotFoundException, IOException {
         Class.forName(driver);
-        String query = "SELECT p.image, p.person_id FROM photos p";
+        String query = "SELECT p.image, p.person_id FROM photo p";
 
-        try(Connection connection = DriverManager.getConnection(url, connProp);
-            PreparedStatement preparedStatement = connection.prepareStatement(query);
-            ResultSet resultSet = preparedStatement.executeQuery()) {
+        try (Connection connection = DriverManager.getConnection(url, connProp);
+             PreparedStatement preparedStatement = connection.prepareStatement(query);
+             ResultSet resultSet = preparedStatement.executeQuery()) {
             Map<Long, byte[]> map = new HashMap<>(resultSet.getRow());
             while (resultSet.next()) {
                 map.put(resultSet.getLong("person_id"),
@@ -42,19 +43,23 @@ public class Main {
     }
 
     private static void save(Map<Long, byte[]> map) throws IOException {
-        for (Map.Entry<Long, byte[]> entry: map.entrySet()) {
-            Path path = Paths.get("./avatars")
+        for (Map.Entry<Long, byte[]> entry : map.entrySet()) {
+            File jarPath = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+            String propertiesPath = jarPath.getParentFile().getAbsolutePath() + "/avatars";
+            File file = new File(propertiesPath);
+            
+            Path path = Paths.get(file.getPath())
                     .resolve(entry.getKey() + ".jpg");
-            File file = path.toFile();
-            if (!file.exists()) {
-                try(ByteArrayInputStream inputStream = new ByteArrayInputStream(entry.getValue())) {
+
+            if (file.exists()) {
+                try (ByteArrayInputStream inputStream = new ByteArrayInputStream(entry.getValue())) {
                     Files.copy(inputStream, path);
                 }
             }
         }
     }
 
-    public static void main(String[] args) throws IOException, SQLException {
+    public static void main(String[] args) throws IOException, SQLException, ClassNotFoundException {
         Properties properties = getProperties();
         String url = properties.getProperty("spring.datasource.url");
         String driver = properties.getProperty("spring.datasource.driver-class-name");
@@ -68,6 +73,5 @@ public class Main {
         save(getPersonsPhotos(url, connProp, driver));
 
     }
-
 
 }
