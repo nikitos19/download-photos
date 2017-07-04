@@ -1,0 +1,24 @@
+group 'com.epam.studstat'
+version '1.0-SNAPSHOT'
+
+task wrapper(type: Wrapper) {
+  gradleVersion = '3.3'
+  distributionUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-all.zip"
+}
+
+apply plugin: 'java'
+apply plugin: 'application'
+
+mainClassName = 'com.epam.studstat.Main'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'org.springframework.boot:spring-boot-starter-jdbc'
+    compile 'org.postgresql:postgresql:42.0.0'
+    testCompile 'junit:junit:4.12'
+}
