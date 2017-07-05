@@ -13,14 +13,11 @@ mainClassName = 'com.epam.studstat.Main'
 
 task fatJar(type: Jar) {
     manifest {
-        attributes 'Implementation-Title': 'Gradle Jar File Example',
-                'Implementation-Version': version,
-                'Main-Class': 'com.epam.studstat.App' +
-                        ''
+        attributes 'Main-Class': 'com.epam.studstat.App'
     }
-    baseName = project.name + '-all'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
+    archiveName 'downloader-photos.jar'
 }
 
 sourceCompatibility = 1.8

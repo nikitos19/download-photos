@@ -1,5 +1,7 @@
 package com.epam.studstat;
 
+import javafx.util.Pair;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -13,34 +15,37 @@ import java.util.Properties;
 
 class ExportPhotos {
 
-    void savePhotos(Map<Long, byte[]> map) throws IOException {
-        for (Map.Entry<Long, byte[]> entry : map.entrySet()) {
-            File jarPath = new File(App.class.getProtectionDomain().getCodeSource().getLocation().getPath());
-            String propertiesPath = jarPath.getParentFile().getAbsolutePath() + "/avatars";
-            File file = new File(propertiesPath);
+    private static final String SELECT_PHOTOS_SQL = "SELECT p.image, p.person_id, p.format FROM photo p";
 
-            Path path = Paths.get(file.getPath())
-                    .resolve(entry.getKey() + ".jpg");
+    void savePhotos(String avatarsDir, Map<Long, Pair<byte[], String>> map) throws IOException {
+        for (Map.Entry<Long, Pair<byte[], String>> entry : map.entrySet()) {
+            File dir = new File(avatarsDir);
 
-            if (file.exists()) {
-                try (ByteArrayInputStream inputStream = new ByteArrayInputStream(entry.getValue())) {
+            Pair<byte[], String> imageAndFormat = entry.getValue();
+            String[] imageFormat = imageAndFormat.getValue().split("[/]");
+            Path path = Paths.get(dir.getPath())
+                    .resolve(entry.getKey() + "." + imageFormat[imageFormat.length-1]);
+
+            if (dir.exists()) {
+                try (ByteArrayInputStream inputStream = new ByteArrayInputStream(imageAndFormat.getKey())) {
                     Files.copy(inputStream, path);
                 }
             }
         }
     }
 
-    Map<Long, byte[]> getPersonsPhotos(String url, Properties connProp, String driver) throws SQLException, ClassNotFoundException, IOException {
+    Map<Long, Pair<byte[], String>> getPersonsPhotos(String url, Properties connProp, String driver) throws SQLException, ClassNotFoundException, IOException {
         Class.forName(driver);
-        String query = "SELECT p.image, p.person_id FROM photo p";
-
         try (Connection connection = DriverManager.getConnection(url, connProp);
-             PreparedStatement preparedStatement = connection.prepareStatement(query);
+             PreparedStatement preparedStatement = connection.prepareStatement(SELECT_PHOTOS_SQL);
              ResultSet resultSet = preparedStatement.executeQuery()) {
-            Map<Long, byte[]> photosMap = new HashMap<>(resultSet.getRow());
+            Map<Long, Pair<byte[], String>> photosMap = new HashMap<>(resultSet.getRow());
             while (resultSet.next()) {
+                Pair<byte[], String> imageAndFormat = new Pair<>(
+                        resultSet.getBytes("image"),
+                        resultSet.getString("format"));
                 photosMap.put(resultSet.getLong("person_id"),
-                        resultSet.getBytes("image"));
+                        imageAndFormat);
             }
             return photosMap;
         }
